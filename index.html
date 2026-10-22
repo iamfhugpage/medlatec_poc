@@ -386,6 +386,7 @@
       .receipt-logo{ height:38px; width:auto; display:block; margin-bottom:.35rem; }
       .pay-logo{ margin:.7rem auto .1rem; text-align:center; }
       .pay-logo img{ height:32px; width:auto; display:inline-block; }
+      .menu-toggle, .mobile-page-name{ display:none; }
 
       /* ---------- Chuẩn chung cho mọi kích thước màn hình ---------- */
       img{ max-width:100%; }
@@ -475,6 +476,51 @@
         .modal{ padding:1rem .85rem; }
       }
 
+      /* ---------- Responsive: điện thoại — menu sổ dọc khi bấm nút Menu (≤599px) ---------- */
+      @media (max-width:599px){
+        .sidebar{
+          flex-direction:row; flex-wrap:wrap; align-items:center;
+          gap:.5rem .6rem; padding:.55rem .7rem;
+        }
+        .brand{ padding:0; flex:0 0 auto; }
+        .brand-logo{ width:118px; padding:.3rem .42rem; border-radius:10px; }
+        .mobile-page-name{
+          display:block; flex:1 1 auto; min-width:0;
+          font-weight:700; font-size:.98rem; color:#fff;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .menu-toggle{
+          display:inline-flex; align-items:center; gap:.45rem; margin-left:auto;
+          background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.35); color:#fff;
+          border-radius:10px; padding:.55rem .8rem; min-height:46px;
+          font-weight:700; font-size:.95rem; cursor:pointer; flex:0 0 auto;
+        }
+        .menu-toggle svg{ width:22px; height:22px; flex:0 0 22px; }
+        .menu-toggle[aria-expanded="true"]{ background:var(--blue); }
+        #mainNav{
+          order:10; flex:1 1 100%; width:100%;
+          display:flex; flex-direction:column; flex-wrap:nowrap; gap:.3rem;
+          max-height:0; overflow:hidden; visibility:hidden; opacity:0;
+          transition:max-height .38s ease, opacity .28s ease, visibility 0s linear .38s;
+        }
+        .sidebar.nav-open #mainNav{
+          max-height:min(78dvh, 620px); overflow-y:auto; visibility:visible; opacity:1;
+          transition:max-height .38s ease, opacity .28s ease;
+          padding-top:.35rem;
+        }
+        .nav-item{
+          flex:0 0 auto; width:100%; white-space:nowrap; min-height:52px;
+          padding:.7rem .8rem; font-size:.98rem; gap:.7rem; border-radius:12px;
+          background:rgba(255,255,255,.06);
+        }
+        .nav-item > span:not(.nav-badge){
+          flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        }
+        .nav-item.active{ background:var(--blue); }
+        .nav-badge{ margin-left:auto; }
+        .topbar h1, .topbar .crumb{ display:none; }
+      }
+
       /* ---------- Responsive: tablet (600–1180px) ---------- */
       @media (min-width:600px) and (max-width:1180px) and (orientation:portrait){
         .grid-2{ grid-template-columns:repeat(2,1fr); }
@@ -537,6 +583,12 @@
         .hero{ min-height:640px; }
         .hero-logo{ width:420px; }
       }
+      /* ---------- Giữ menu sổ dọc ở điện thoại xoay ngang thấp (≤599px) ---------- */
+      @media (max-width:599px){
+        #mainNav{ flex-direction:column; flex-wrap:nowrap; overflow-x:hidden; width:100%; flex:1 1 100%; }
+        .sidebar.nav-open #mainNav{ overflow-y:auto; overflow-x:hidden; }
+        .nav-item{ white-space:nowrap; flex:0 0 auto; width:100%; }
+      }
     </style>
   </head>
   <body>
@@ -548,6 +600,11 @@
           </div>
           <div class="brand-sub brand-sub-under">trên VNPT SmartScreen</div>
         </div>
+        <span class="mobile-page-name" id="mobilePageName">Trang chủ</span>
+        <button class="menu-toggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="mainNav" aria-label="Mở hoặc đóng menu điều hướng">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          <span>Menu</span>
+        </button>
         <div class="account-chip">
           <div class="avatar" id="chipAvatar">NA</div>
           <div>
@@ -813,8 +870,11 @@
         (n.badge && n.badge() ? '<span class="nav-badge">' + n.badge() + '</span>' : '') + '</button>'
       ).join('');
       $$('#mainNav [data-nav]').forEach(b => b.addEventListener('click', ()=>go(b.dataset.nav)));
+      const actNav = NAV.find(n => S.view===n.id || (S.view==='pkgdetail' && n.id==='packages') || (S.view==='apptdetail' && n.id==='appts'));
+      const mpn = $('#mobilePageName'); if(mpn && actNav) mpn.textContent = actNav.label;
     }
     function go(view, arg){
+      closeMenu();
       S.view = view;
       const nav = NAV.find(n=>n.id===view);
       if(nav){ $('#pageTitle').textContent = nav.title; $('#pageCrumb').textContent = nav.crumb; }
@@ -834,6 +894,25 @@
       if(first && view !== 'home') { /* giữ focus tự nhiên trên TV: không ép khi ở trang chủ */ }
       if(first) first.dataset.focusReady = '1';
     }
+
+    /* ================== MENU MOBILE: SỔ DỌC ================== */
+    function setMenu(open){
+      const sb = $('.sidebar'), tg = $('#menuToggle');
+      if(sb) sb.classList.toggle('nav-open', open);
+      if(tg) tg.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    function closeMenu(){ setMenu(false); }
+    const menuToggleBtn = $('#menuToggle');
+    if(menuToggleBtn) menuToggleBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const sb = $('.sidebar');
+      setMenu(!(sb && sb.classList.contains('nav-open')));
+    });
+    document.addEventListener('click', e => {
+      const sb = $('.sidebar');
+      if(sb && sb.classList.contains('nav-open') && !sb.contains(e.target)) closeMenu();
+    });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') closeMenu(); });
 
     function stepsBar(steps, cur){
       return '<div class="steps">' + steps.map((s,i) =>
